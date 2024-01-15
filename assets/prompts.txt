@@ -1,0 +1,19 @@
+Prompts for different genre: 
+
+Classic: Violin, Cello, Flute, Clarinet, Piano with Orchestral arrangements, intricate counterpoint, use of classical forms (sonata, symphony, etc.), dynamic contrast.
+
+Metal: Kick Drum, Synthesizers, Reverse Bass with Build-ups and Drops, Energetic Melodies, Hard Percussion
+Electric Guitar. Bass Guitar, Drum Kit, 
+ with Guitar Riffs, Double Bass Drumming, Distorted Sound, Time Signature Changes
+
+Jazz: Saxophone, Trumpet, Piano, Double Bass, Drum Kit with Improvisation, swing rhythm, syncopation, extended chords, call and response. Maintain the original song's melodic structure while infusing it with a classic jazz feel
+
+Country: Acoustic Guitar, Banjo, Fiddle, Pedal Steel Guitar with Twangy guitar, country scales, simple chord progressions, folk influences.
+
+EDM: Synthesizers, Drum Machines, Sampler with Electronic beats, synthesizer melodies, drops, build-ups, effects, rhythmic complexity.
+
+Hardstyle/Eurodance: Kick Drum, Synthesizers and Reverse Bass with Build-ups and Drops, Energetic Melodies, Pitched Vocals, Hard Percussion
+
+Reggae: Guitar, Bass, Drums, Organ with Offbeat rhythm (skank), dub effects
+
+Rock: Electric Guitar, Bass Guitar, Drum Kit with Power chords, guitar solos, strong backbeat, distortion, energetic performance.
