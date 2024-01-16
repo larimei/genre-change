@@ -22,11 +22,32 @@ log_suppressor = LogSuppressor()
 log_suppressor.suppress_subprocess_logging()
 
 model_loader = ModelLoader("facebook/musicgen-stereo-melody")
-INTERRUPTING = False
 
-def interrupt():
-    global INTERRUPTING
-    INTERRUPTING = True
+genre_prompt = {
+    "Classic": "Violin, Cello, Flute, Clarinet, Piano with Orchestral arrangements, intricate counterpoint, use of classical forms (sonata, symphony, etc.), dynamic contrast.",
+"Metal": "Kick Drum, Reverse Bass with Build-ups and Drops, Energetic Melodies, Hard Percussion, Electric Guitar, Bass Guitar, Drum Kit, with Guitar Riffs, Double Bass Drumming, Distorted Sound, Time Signature Changes",
+"Jazz": "Saxophone, Trumpet, Piano, Double Bass, Drum Kit with Improvisation, swing rhythm, syncopation, extended chords, call and response. Maintain the original song's melodic structure while infusing it with a classic jazz feel",
+"Country": "Acoustic Guitar, Banjo, Fiddle, Pedal Steel Guitar with Twangy guitar, country scales, simple chord progressions, folk influences.",
+"EDM": "Synthesizers, Drum Machines, Sampler with Electronic beats, synthesizer melodies, drops, build-ups, effects, rhythmic complexity.",
+"Hardstyle/Eurodance": "Kick Drum, Synthesizers and Reverse Bass with Build-ups and Drops, Energetic Melodies, Pitched Vocals, Hard Percussion",
+"Reggae": "Guitar, Bass, Drums, Organ with Offbeat rhythm (skank), dub effects",
+"Rock": "Electric Guitar, Bass Guitar, Drum Kit with Power chords, guitar solos, strong backbeat, distortion, energetic performance."
+}
+
+input_file_path = "./assets/input_files/"
+music_files = {
+    "Bach": "bach.mp3",
+    "Bolero": "bolero_ravel.mp3",
+    "Eye of the Tiger": "eye_of_the_tiger.mp3",
+    "Let it go Long": "let_it_go_input1.mp3",
+    "Let it go": "let_it_go_input2.mp3",
+    "Pokerface": "pokerface_input_long.mp3",
+    "Pokerface Long": "pokerface_input1.mp3",
+    "Game of Thrones": "game_of_thrones_input1.mp3"
+}
+
+def melody_change(file):
+    return input_file_path + music_files.get(file)
 
 def make_waveform(*args, **kwargs):
     be = time.time()
@@ -36,22 +57,24 @@ def make_waveform(*args, **kwargs):
         print("Make a video took", time.time() - be)
         return out
 
-def _do_predictions(texts, melodies, duration, progress=False, gradio_progress=None):
+
+def _do_predictions(genre, melodies, duration = 10, progress=False, gradio_progress=None):
     model_loader.model.set_generation_params(duration=duration)
     target_sr = 32000
     processed_melodies = _process_melodies(melodies, duration, target_sr)
+    input_prompt = [genre_prompt.get(genre)]
     
     try:
         if any(m is not None for m in processed_melodies):
             outputs = model_loader.model.generate_with_chroma(
-                descriptions=texts,
+                descriptions=input_prompt,
                 melody_wavs=processed_melodies,
                 melody_sample_rate=target_sr,
                 progress=progress,
                 return_tokens=False
             )
         else:
-            outputs = model_loader.model.generate(texts, progress=progress, return_tokens=False)
+            outputs = model_loader.model.generate([input_prompt], progress=progress, return_tokens=False)
     except RuntimeError as e:
         raise gr.Error("Error while generating " + e.args[0])
 
@@ -87,9 +110,7 @@ def _process_melodies(melodies, duration, target_sr=32000, target_ac=1):
     return processed_melodies
 
 
-def predict_full(text, melody, duration, progress=gr.Progress()):
-    global INTERRUPTING
-    INTERRUPTING = False
+def predict_full(genre, melody, progress=gr.Progress()):
     progress(0, desc="Loading model...")
     model_loader.load_model()
 
@@ -99,41 +120,44 @@ def predict_full(text, melody, duration, progress=gr.Progress()):
         nonlocal max_generated
         max_generated = max(generated, max_generated)
         progress((min(max_generated, to_generate), to_generate))
-        if INTERRUPTING:
-            raise gr.Error("Interrupted.")
 
     model_loader.model.set_custom_progress_callback(_progress)
 
-    return _do_predictions([text], [melody], duration, progress=True, gradio_progress=progress)
+    return _do_predictions(genre, [melody], progress=True, gradio_progress=progress)
+
 
 def create_ui():
-    with gr.Blocks() as interface:
-        gr.Markdown(
+    css = """
+    .container {
+        height: 50px;
+    }
+    """
+
+    with gr.Blocks() as demo:
+        with gr.Column():
+            gr.HTML(value="<div style = 'display: flex; justify-content: space-between; align-items: center'><img src = 'file/logo.png' alt='logo' width='150px'/><div style='font-size: 32px'>GenreMorpher</div><img src = 'https://upload.wikimedia.org/wikipedia/de/5/57/Hochschule_Furtwangen_HFU_logo.svg' alt='hfu_logo' width='300px'/></div>")
+            with gr.Row(elem_classes=["container"]):
+                melody = gr.Audio(label="Upload your audio", interactive=True, sources=["upload"], )
+                otherMelody = gr.Dropdown(music_files.keys(), label="Or choose one of our audios")
+            genre = gr.Dropdown(genre_prompt.keys(), label="Select Genre", value="Metal")
+            btn = gr.Button(value="Generate")
+            
+            output = gr.Video(label="Generated Music", interactive=False, elem_classes=["container"])
+            audio_output = gr.Audio(label="Generated Music (wav)", type='filepath', interactive=False)
+            otherMelody.change(fn=melody_change, inputs=otherMelody, outputs=melody)
+            btn.click(predict_full, inputs=[genre, melody],
+                                               outputs=[output, audio_output])
+            gr.Markdown(
             """
-            # Endabgabe
-            Dies ist zum Musik generieren
+            [GenreMorpher](https://github.com/larimei/Music-KI) is a project for the course AI in Music
+            from the Hochschule Furtwangen.
+            This app changes the style and genre of the uploaded audio file and 
+            generates a new one.
+            Created by Jonathan Rissler, Lennard Hurst and Lara Meister
             """
         )
-        with gr.Row():
-            with gr.Column():
-                with gr.Row():
-                    text = gr.Text(label="Input Text", interactive=True)
-                    with gr.Column():
-                        melody = gr.Audio(sources=["upload"], type="numpy", label="File",
-                                          interactive=True, elem_id="melody-input")
-                with gr.Row():
-                    submit = gr.Button("Submit")
-                    interrupt_button = gr.Button("Interrupt")
-                with gr.Row():
-                    duration = gr.Slider(minimum=1, maximum=120, value=10, label="Duration", interactive=True)
-            with gr.Column():
-                output = gr.Video(label="Generated Music")
-                audio_output = gr.Audio(label="Generated Music (wav)", type='filepath')
-        submit.click(predict_full, inputs=[text, melody, duration],
-                                               outputs=[output, audio_output])
-        interrupt_button.click(interrupt, queue=False)
 
-        interface.queue().launch()
+            demo.queue().launch(share=False, allowed_paths=["logo.png"])
 
 
 if __name__ == "__main__":
